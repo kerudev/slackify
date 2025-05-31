@@ -1,0 +1,8 @@
+# Editor
+.vscode
+
+# Generated tokens
+*.json
+
+# Cache
+__pycache__

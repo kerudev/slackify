@@ -1,18 +1,27 @@
 import os
 import subprocess
+import traceback
 from argparse import Namespace
 from time import sleep
-import traceback
 
 from slackify import log
-from slackify.constants import (CONFIGURATION, TOKEN_KEYS, CREDENTIALS, ENV_FILE, SERVICE_PATH, SLACKIFY_ENTRY, TMP_SERVICE_PATH)
+from slackify.constants import (
+    CONFIGURATION,
+    CREDENTIALS,
+    ENV_FILE,
+    SERVICE_PATH,
+    SLACKIFY_ENTRY,
+    TMP_SERVICE_PATH,
+    TOKEN_KEYS
+)
 from slackify.slack import get_presence, set_profile
 from slackify.spotify import song_as_str
 
-def __init_service() -> bool:
+
+def __init_service():
     if os.path.exists(SERVICE_PATH):
         log.warn(f"The Slackify service already exists at '{SERVICE_PATH}'")
-        return False
+        log.warn("The service will be overwritten")
 
     log.info(f"Creating service at '{SERVICE_PATH}'")
 
@@ -22,6 +31,7 @@ Description=Slackify
 After=network.target
 
 [Service]
+Environment=SLACKIFY_SERVICE=1
 EnvironmentFile={ENV_FILE}
 ExecStart=/usr/bin/python3 {SLACKIFY_ENTRY} play
 TimeoutStartSec=0
@@ -38,13 +48,8 @@ WantedBy=multi-user.target
     log.info(f"Moving from '{TMP_SERVICE_PATH}' to '{SERVICE_PATH}'")
     subprocess.run(["sudo", "mv", TMP_SERVICE_PATH, SERVICE_PATH], check=True)
 
-    return True
-
 def init():
-    changed = __init_service()
-
-    if not changed:
-        return
+    __init_service()
 
     log.info("Reloading systemd...")
     subprocess.run(["sudo", "systemctl", "daemon-reload"], check=True)
@@ -78,9 +83,9 @@ def stop():
     log.ok("Service stopped!")
 
 def play(arguments: Namespace):
-    if CONFIGURATION:
-        arguments.album = arguments.album or CONFIGURATION.get("album", False)
-        arguments.progress = arguments.progress or CONFIGURATION.get("progress", False)
+    if os.getenv("SLACKIFY_SERVICE") and CONFIGURATION:
+        arguments.album = CONFIGURATION.get("album", False)
+        arguments.progress = CONFIGURATION.get("progress", False)
 
     try:
         while True:

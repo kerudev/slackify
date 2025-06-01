@@ -4,6 +4,7 @@ import os
 
 from slackify import actions, args, log
 
+
 def main():
     arguments = args.parse()
 

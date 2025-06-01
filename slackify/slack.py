@@ -1,9 +1,8 @@
-import datetime
 import requests
-import os
 
-SLACK_URL = "https://slack.com/api"
-SLACK_TOKEN = os.getenv("SLACK_TOKEN")
+from slackify.constants import CREDENTIALS, KEY_SLACK_TOKEN, SLACK_URL
+
+SLACK_TOKEN = CREDENTIALS[KEY_SLACK_TOKEN]
 
 def __url(slug: str) -> str:
     return f"{SLACK_URL}/{slug}"

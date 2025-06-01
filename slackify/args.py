@@ -5,8 +5,10 @@ from enum import StrEnum
 class Command(StrEnum):
     PLAY = "play"
     INIT = "init"
+    STATUS = "status"
     START = "start"
     STOP = "stop"
+    RESET = "reset"
 
 def parse() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
@@ -20,7 +22,9 @@ def parse() -> argparse.Namespace:
     play_group.add_argument("--progress", action="store_true", help="show the song's progress (time until it finishes)")
 
     subparsers.add_parser(Command.INIT.value, help="Creates the Slackify system service (systemd)")
+    subparsers.add_parser(Command.STATUS.value, help="Displays the status of the Slackify service (systemd)")
     subparsers.add_parser(Command.START.value, help="Starts Slackify as a system service (systemd)")
     subparsers.add_parser(Command.STOP.value, help="Stops Slackify as a system service (systemd)")
+    subparsers.add_parser(Command.RESET.value, help="Stop the Slackify service to start it again (systemd)")
 
     return parser.parse_args()

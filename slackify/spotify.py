@@ -170,23 +170,30 @@ def song_as_str(flags: Optional[Namespace] = None) -> str:
 
     response_json = response.json()
 
-    song = response_json["item"]
+    try:
+        song = response_json["item"]
 
-    artist = song["artists"][0]["name"]
-    name = song["name"]
+        artist = song["artists"][0]["name"]
+        name = song["name"]
 
-    title = [f"{artist} - {name}"]
+        title = [f"{artist} - {name}"]
 
-    if flags.album and song["album"]["album_type"] != "single":
-        title.append(f"({song["album"]["name"]})")
+        if flags.album and song["album"]["album_type"] != "single":
+            title.append(f"({song["album"]["name"]})")
 
-    if flags.progress:
-        progress_ms = response_json["progress_ms"]
-        total_ms = song["duration_ms"]
+        if flags.progress:
+            progress_ms = response_json["progress_ms"]
+            total_ms = song["duration_ms"]
 
-        progress = __calc_time(progress_ms)
-        total = __calc_time(total_ms)
+            progress = __calc_time(progress_ms)
+            total = __calc_time(total_ms)
 
-        title.append(f"({progress} / {total})")
+            title.append(f"({progress} / {total})")
 
-    return " ".join(title)
+        return " ".join(title)
+    
+    except KeyError as ke:
+        log.err(f"The following key is missing: {ke}")
+        log.err(response_json)
+
+        return ""

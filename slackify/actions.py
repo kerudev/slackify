@@ -56,6 +56,23 @@ def init():
 
     log.ok("Reload finished!")
 
+def _get_status() -> str:
+    result = subprocess.run(
+        ["sudo", "systemctl", "is-active", "slackify.service"],
+        capture_output=True,
+        check=False
+    )
+
+    return result.stdout.strip().decode()
+
+def status():
+    if not os.path.exists(SERVICE_PATH):
+        log.warn(f"The Slackify service doesn't exist")
+        init()
+
+    log.info(f"Checking the service's status")
+    log.info(f"The service's status is '{_get_status()}'")
+
 def start():
     if not os.path.exists(SERVICE_PATH):
         log.warn(f"The Slackify service doesn't exist at '{SERVICE_PATH}'")
@@ -82,7 +99,20 @@ def stop():
 
     log.ok("Service stopped!")
 
+def reset():
+    if not os.path.exists(SERVICE_PATH):
+        log.warn(f"The Slackify service doesn't exist")
+        init()
+
+    stop()
+    start()
+
 def play(arguments: Namespace):
+    if os.getenv("SLACKIFY_SERVICE") != "0":
+        if _get_status() == "active":
+            log.warn("The Slackify process is running. Stop it before using this command")
+            return
+
     if os.getenv("SLACKIFY_SERVICE") and CONFIGURATION:
         arguments.album = CONFIGURATION.get("album", False)
         arguments.progress = CONFIGURATION.get("progress", False)

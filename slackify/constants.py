@@ -14,6 +14,7 @@ os.makedirs(CONFIG_PATH, exist_ok=True)
 
 CONF_FILE = os.path.join(CONFIG_PATH, "slackify.conf")
 ENV_FILE = os.path.join(CONFIG_PATH, "slackify.env")
+PREV_PICTURE_FILE = os.path.join(CONFIG_PATH, "previous_profile_picture")
 
 # Config managements
 if not os.path.exists(CONF_FILE):

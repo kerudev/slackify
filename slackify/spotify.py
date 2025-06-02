@@ -5,6 +5,7 @@ import os
 import random
 import socketserver
 import string
+from time import sleep
 import urllib.request
 import webbrowser
 from argparse import Namespace
@@ -122,6 +123,7 @@ def refresh_token() -> dict[str, str]:
 
     data = urllib.parse.urlencode({
         "grant_type": "refresh_token",
+        "scope": "user-read-currently-playing",
         "refresh_token": refresh_token,
         "client_id": SPOTIFY_CLIENT_ID,
     }).encode()
@@ -162,16 +164,21 @@ def get_song() -> requests.Response:
 
     return response
 
-def song_as_str(flags: Optional[Namespace] = None) -> str:
-    response = get_song()
-
-    if not response.content:
-        return
-
-    response_json = response.json()
-
+def song_as_str(song_response: dict[str, str], flags: Optional[Namespace] = None) -> str | bool:
     try:
-        song = response_json["item"]
+        song = song_response["item"]
+
+        if song == None:
+            if song_response["context"] == None:
+                log.info("There is no song playing. Maybe you are playing a podcast episode?")
+                log.info("Stopping the service")
+
+                return True
+
+            else:
+                log.info("There is no song playing. Maybe you got an ad?")
+                log.info("Sleeping for 5 seconds until the ads end")
+                sleep(5)
 
         artist = song["artists"][0]["name"]
         name = song["name"]
@@ -182,7 +189,7 @@ def song_as_str(flags: Optional[Namespace] = None) -> str:
             title.append(f"({song["album"]["name"]})")
 
         if flags.progress:
-            progress_ms = response_json["progress_ms"]
+            progress_ms = song_response["progress_ms"]
             total_ms = song["duration_ms"]
 
             progress = __calc_time(progress_ms)
@@ -194,6 +201,6 @@ def song_as_str(flags: Optional[Namespace] = None) -> str:
     
     except KeyError as ke:
         log.err(f"The following key is missing: {ke}")
-        log.err(response_json)
+        log.err(song_response)
 
-        return ""
+        return True

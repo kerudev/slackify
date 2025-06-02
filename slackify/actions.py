@@ -9,13 +9,14 @@ from slackify.constants import (
     CONFIGURATION,
     CREDENTIALS,
     ENV_FILE,
+    PREV_PICTURE_FILE,
     SERVICE_PATH,
     SLACKIFY_ENTRY,
     TMP_SERVICE_PATH,
     TOKEN_KEYS
 )
-from slackify.slack import get_presence, set_profile
-from slackify.spotify import song_as_str
+from slackify.slack import get_presence, get_profile, set_photo, set_profile
+from slackify.spotify import get_song, song_as_str
 
 
 def __init_service():
@@ -58,7 +59,7 @@ def init():
 
 def _get_status() -> str:
     result = subprocess.run(
-        ["sudo", "systemctl", "is-active", "slackify.service"],
+        ["systemctl", "is-active", "slackify.service"],
         capture_output=True,
         check=False
     )
@@ -67,10 +68,10 @@ def _get_status() -> str:
 
 def status():
     if not os.path.exists(SERVICE_PATH):
-        log.warn(f"The Slackify service doesn't exist")
+        log.warn("The Slackify service doesn't exist")
         init()
 
-    log.info(f"Checking the service's status")
+    log.info("Checking the service's status")
     log.info(f"The service's status is '{_get_status()}'")
 
 def start():
@@ -84,31 +85,40 @@ def start():
         log.warn("Please set them before continuing")
         return
 
-    log.info(f"Starting the service")
+    log.info("Starting the service")
     subprocess.run(["sudo", "systemctl", "start", "slackify.service"], check=True)
 
     log.ok("Service started!")
 
 def stop():
     if not os.path.exists(SERVICE_PATH):
-        log.warn(f"The Slackify service doesn't exist")
+        log.warn("The Slackify service doesn't exist")
         init()
 
-    log.info(f"Stopping the service")
+    log.info("Stopping the service")
     subprocess.run(["sudo", "systemctl", "stop", "slackify.service"], check=True)
 
     log.ok("Service stopped!")
 
+    if not os.path.exists(PREV_PICTURE_FILE):
+        log.warn("The previous profile picture can't be found")
+        return
+
+    log.info("Resetting the profile picture")
+
+    with open(PREV_PICTURE_FILE, "r") as f:
+        set_photo(f.readline())
+
 def reset():
     if not os.path.exists(SERVICE_PATH):
-        log.warn(f"The Slackify service doesn't exist")
+        log.warn("The Slackify service doesn't exist")
         init()
 
     stop()
     start()
 
 def play(arguments: Namespace):
-    if os.getenv("SLACKIFY_SERVICE") != "0":
+    if os.getenv("SLACKIFY_SERVICE") != "1":
         if _get_status() == "active":
             log.warn("The Slackify process is running. Stop it before using this command")
             return
@@ -116,6 +126,15 @@ def play(arguments: Namespace):
     if os.getenv("SLACKIFY_SERVICE") and CONFIGURATION:
         arguments.album = CONFIGURATION.get("album", False)
         arguments.progress = CONFIGURATION.get("progress", False)
+        arguments.cover = CONFIGURATION.get("cover", False)
+
+    profile = get_profile().json()
+    previous_photo = profile["profile"]["image_512"]
+
+    with open(PREV_PICTURE_FILE, "w") as f:
+        f.write(previous_photo)
+
+    previous_cover_url = previous_photo
 
     try:
         while True:
@@ -123,11 +142,19 @@ def play(arguments: Namespace):
                 log.info("Your status is away")
                 return
 
-            title = song_as_str(arguments)
+            response = get_song()
+
+            if not response.content:
+                return
+
+            song = response.json()
+
+            title = song_as_str(song, arguments)
 
             if not title:
+                stop()
                 return
-        
+
             log.info(title)
 
             args = {"profile": {
@@ -137,6 +164,13 @@ def play(arguments: Namespace):
             }}
 
             set_profile(args)
+
+            if arguments.cover:
+                cover_url = song["item"]["album"]["images"][0]["url"]
+
+                if previous_cover_url != cover_url:
+                    previous_cover_url = cover_url
+                    set_photo(cover_url)
 
             sleep(2)
 
@@ -150,4 +184,8 @@ def play(arguments: Namespace):
             "status_expiration": 0
         }}
 
+        log.info("Resetting the profile info")
         set_profile(args)
+
+        log.info("Resetting the profile picture")
+        set_photo(previous_photo)

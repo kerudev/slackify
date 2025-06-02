@@ -18,8 +18,9 @@ def parse() -> argparse.Namespace:
     play = subparsers.add_parser(Command.PLAY.value, help="Initializes Slackify in the current shell session")
 
     play_group = play.add_mutually_exclusive_group(required=False)
-    play_group.add_argument("--album", action="store_true", help="show the album's title")
-    play_group.add_argument("--progress", action="store_true", help="show the song's progress (time until it finishes)")
+    play_group.add_argument("--album", action="store_true", help="Displays the song's album title (if it's not a single)")
+    play_group.add_argument("--progress", action="store_true", help="Show the song's progress (time until it finishes)")
+    play_group.add_argument("--cover", action="store_true", help="Temporarily sets your profile picture to the song's cover")
 
     subparsers.add_parser(Command.INIT.value, help="Creates the Slackify system service (systemd)")
     subparsers.add_parser(Command.STATUS.value, help="Displays the status of the Slackify service (systemd)")

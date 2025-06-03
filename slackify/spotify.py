@@ -119,7 +119,10 @@ def request_token() -> dict[str, str]:
 
 def refresh_token() -> dict[str, str]:
     with open(SPOTIFY_TOKEN_FILE, "r") as f:
-        refresh_token = json.load(f)["refresh_token"]
+        refresh_token = json.load(f).get("refresh_token")
+
+    if not refresh_token:
+        return request_token()
 
     data = urllib.parse.urlencode({
         "grant_type": "refresh_token",

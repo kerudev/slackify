@@ -59,5 +59,5 @@ SLACK_URL = "https://slack.com/api"
 SPOTIFY_TOKEN_ENDPOINT = "https://accounts.spotify.com/api/token"
 
 # Spotify token management
-SPOTIFY_TOKEN_PATH = os.path.join(SLACKIFY_DIR, "tokens")
+SPOTIFY_TOKEN_PATH = os.path.join(CONFIG_PATH, "tokens")
 SPOTIFY_TOKEN_FILE = os.path.join(SPOTIFY_TOKEN_PATH, "spotify_token.json")

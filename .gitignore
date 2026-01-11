@@ -4,5 +4,18 @@
 # Generated tokens
 *.json
 
-# Cache
-__pycache__
+# Environments
+.env
+.envrc
+.venv
+env/
+venv/
+
+# Caches
+__pycache__/
+.pytest_cache/
+.ruff_cache
+
+# Artifacts
+*.egg-info
+.python-version

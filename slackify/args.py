@@ -1,8 +1,12 @@
 import argparse
-from enum import StrEnum
+from enum import Enum
+from math import log
+import os
+
+from slackify import actions
 
 
-class Command(StrEnum):
+class Command(str, Enum):
     PLAY = "play"
     INIT = "init"
     STATUS = "status"
@@ -22,10 +26,23 @@ def parse() -> argparse.Namespace:
     play_group.add_argument("--progress", action="store_true", help="Show the song's progress (time until it finishes)")
     play_group.add_argument("--cover", action="store_true", help="Temporarily sets your profile picture to the song's cover")
 
-    subparsers.add_parser(Command.INIT.value, help="Creates the Slackify system service (systemd)")
-    subparsers.add_parser(Command.STATUS.value, help="Displays the status of the Slackify service (systemd)")
-    subparsers.add_parser(Command.START.value, help="Starts Slackify as a system service (systemd)")
-    subparsers.add_parser(Command.STOP.value, help="Stops Slackify as a system service (systemd)")
-    subparsers.add_parser(Command.RESET.value, help="Stop the Slackify service to start it again (systemd)")
+    if os.name != "nt":
+        subparsers.add_parser(Command.INIT.value, help="Creates the Slackify system service (systemd)")
+        subparsers.add_parser(Command.STATUS.value, help="Displays the status of the Slackify service (systemd)")
+        subparsers.add_parser(Command.START.value, help="Starts Slackify as a system service (systemd)")
+        subparsers.add_parser(Command.STOP.value, help="Stops Slackify as a system service (systemd)")
+        subparsers.add_parser(Command.RESET.value, help="Stop the Slackify service to start it again (systemd)")
 
     return parser.parse_args()
+
+def main():
+    if os.getuid() != 0:
+        log.warn("You may be asked to authenticate as sudo.")
+
+    arguments = parse()
+
+    if not (func := getattr(actions, arguments.command, None)):
+        log.err(f"There is no function associated to the '{arguments.command}' command")
+        exit(1)
+
+    func()

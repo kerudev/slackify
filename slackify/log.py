@@ -1,14 +1,17 @@
 from datetime import datetime
 
 
-def ok(msg: str):
-    print(f"[{datetime.now()}] \033[1;32m[OK  ]\033[0m {msg}")
+def __log(fmt: str, msg: str) -> None:
+    print(f"[{datetime.now()}] {fmt}\033[0m {msg}")
 
-def info(msg: str):
-    print(f"[{datetime.now()}] \033[1;34m[INFO]\033[0m {msg}")
+def ok(msg: str) -> None:
+    __log("\033[1;32m[OK  ]", msg)
 
-def warn(msg: str):
-    print(f"[{datetime.now()}] \033[1;33m[WARN]\033[0m {msg}")
+def info(msg: str) -> None:
+    __log("\033[1;34m[INFO]", msg)
 
-def err(msg: str):
-    print(f"[{datetime.now()}] \033[1;31m[ERR ]\033[0m {msg}")
+def warn(msg: str) -> None:
+    __log("\033[1;33m[WARN]", msg)
+
+def err(msg: str) -> None:
+    __log("\033[1;31m[ERR ]", msg)

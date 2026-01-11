@@ -14,18 +14,21 @@ from typing import Optional
 import requests
 
 from slackify import log
-from slackify.constants import (
-    CREDENTIALS,
-    KEY_SPOTIFY_CLIENT_ID,
-    KEY_SPOTIFY_CLIENT_SECRET,
-    SPOTIFY_TOKEN_ENDPOINT,
-    SPOTIFY_TOKEN_FILE,
-    SPOTIFY_TOKEN_PATH
-)
+from slackify.constants import CONFIG_PATH
+from slackify.utils import get_token
 
+SPOTIFY_TOKEN_ENDPOINT = "https://accounts.spotify.com/api/token"
 
-SPOTIFY_CLIENT_ID = CREDENTIALS[KEY_SPOTIFY_CLIENT_ID]
-SPOTIFY_CLIENT_SECRET = CREDENTIALS[KEY_SPOTIFY_CLIENT_SECRET]
+SPOTIFY_TOKEN_PATH = CONFIG_PATH / "tokens"
+SPOTIFY_TOKEN_FILE = SPOTIFY_TOKEN_PATH / "spotify_token.json"
+
+SPOTIFY_CLIENT_ID = get_token("SPOTIFY_CLIENT_ID")
+SPOTIFY_CLIENT_SECRET = get_token("SPOTIFY_CLIENT_SECRET")
+
+SPOTIFY_TOKEN_HEADERS = {
+    "Authorization": "Basic " + base64.b64encode(f"{SPOTIFY_CLIENT_ID}:{SPOTIFY_CLIENT_SECRET}".encode()).decode(),
+    "Content-Type": "application/x-www-form-urlencoded",
+}
 
 # Used to request the token for the first time (or if it isn't stored in a file)
 PORT = 8888
@@ -52,16 +55,6 @@ class ReusableTCPServer(socketserver.TCPServer):
         self.token_response = None
 
 class SpotifyTokenHandler(http.server.BaseHTTPRequestHandler):
-    @staticmethod
-    def token_headers():
-        credentials = f"{SPOTIFY_CLIENT_ID}:{SPOTIFY_CLIENT_SECRET}"
-        headers = {
-            "Authorization": "Basic " + base64.b64encode(credentials.encode()).decode(),
-            "Content-Type": "application/x-www-form-urlencoded",
-        }
-
-        return headers
-
     def do_GET(self):
         self.send_response(302)
         self.send_header("Location", "https://open.spotify.com/")
@@ -81,14 +74,14 @@ class SpotifyTokenHandler(http.server.BaseHTTPRequestHandler):
         req = urllib.request.Request(
             SPOTIFY_TOKEN_ENDPOINT,
             data=data,
-            headers=self.token_headers(),
+            headers=SPOTIFY_TOKEN_HEADERS,
         )
 
         with urllib.request.urlopen(req) as res:
             self.server.token_response = json.loads(res.read().decode())
 
-def get_token() -> dict[str, str]:
-    if os.path.exists(SPOTIFY_TOKEN_FILE):
+def read_spotify_token() -> dict[str, str]:
+    if SPOTIFY_TOKEN_FILE.exists():
         with open(SPOTIFY_TOKEN_FILE, "r") as f:
             return json.load(f)
 
@@ -134,7 +127,7 @@ def refresh_token() -> dict[str, str]:
     req = urllib.request.Request(
         SPOTIFY_TOKEN_ENDPOINT,
         data=data,
-        headers=SpotifyTokenHandler.token_headers(),
+        headers=SPOTIFY_TOKEN_HEADERS,
     )
 
     with urllib.request.urlopen(req) as res:
@@ -146,21 +139,20 @@ def refresh_token() -> dict[str, str]:
     return token
 
 def get_song() -> requests.Response:
-    token = get_token()
-    access_token = token["access_token"]
+    token = read_spotify_token()
 
     response = requests.get(
         url="https://api.spotify.com/v1/me/player/currently-playing",
-        headers={"Authorization": f"Bearer {access_token}"}
+        headers={"Authorization": f"Bearer {token['access_token']}"}
     )
 
     if not response.content.decode():
         log.warn("There is no song currently playing.")
         return response
 
-    error = response.json().get("error")
+    error = response.json().get("error", {})
 
-    if error and error.get("message") == "The access token expired":
+    if error.get("message") == "The access token expired":
         log.info("Token expired. Requesting a new one")
         refresh_token()
         return get_song()
@@ -189,7 +181,7 @@ def song_as_str(song_response: dict[str, str], flags: Optional[Namespace] = None
         title = [f"{artist} - {name}"]
 
         if flags.album and song["album"]["album_type"] != "single":
-            title.append(f"({song["album"]["name"]})")
+            title.append(f"({song['album']['name']})")
 
         if flags.progress:
             progress_ms = song_response["progress_ms"]

@@ -1,9 +1,8 @@
 import argparse
 from enum import Enum
-from math import log
 import os
 
-from slackify import actions
+from slackify import log, commands
 
 
 class Command(str, Enum):
@@ -36,13 +35,17 @@ def parse() -> argparse.Namespace:
     return parser.parse_args()
 
 def main():
+    arguments = parse()
+
     if os.getuid() != 0:
         log.warn("You may be asked to authenticate as sudo.")
 
-    arguments = parse()
-
-    if not (func := getattr(actions, arguments.command, None)):
+    if not (func := getattr(commands, arguments.command, None)):
         log.err(f"There is no function associated to the '{arguments.command}' command")
         exit(1)
+
+    if func.__name__ == "play":
+        func(arguments)
+        exit(0)
 
     func()

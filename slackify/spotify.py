@@ -6,16 +6,16 @@ import random
 import socketserver
 import string
 from time import sleep
+import urllib.error
+import urllib.parse
 import urllib.request
 import webbrowser
 from argparse import Namespace
-from typing import Optional
-
-import requests
+from typing import Any, Optional
 
 from slackify import log
-from slackify.constants import CONFIG_PATH
-from slackify.utils import get_token
+from slackify.constants import CONFIG_PATH, LIB_HEADERS
+from slackify.utils import dispatch, get_token, read_response
 
 SPOTIFY_TOKEN_ENDPOINT = "https://accounts.spotify.com/api/token"
 
@@ -44,14 +44,35 @@ def __calc_time(millis: int) -> str:
 
     return f"{mins}:{secs:02d}"
 
+
+def __get(url: str, headers: dict[str, Any]) -> str:
+    headers = {**LIB_HEADERS, **headers}
+
+    req = urllib.request.Request(
+        url=url,
+        headers=headers,
+        method="GET",
+    )
+
+    return dispatch(req)
+
+def __post(url: str, json: dict[str, Any], headers: dict[str, Any]) -> str:
+    data = urllib.parse.urlencode(json).encode()
+    headers = {**LIB_HEADERS, **headers}
+
+    req = urllib.request.Request(
+        url=url,
+        data=data,
+        headers=headers,
+    )
+
+    return dispatch(req)
+
 class ReusableTCPServer(socketserver.TCPServer):
     allow_reuse_address = True
 
     def __init__(self):
-        server_address = ("", PORT)
-        RequestHandlerClass = SpotifyTokenHandler
-        
-        super().__init__(server_address, RequestHandlerClass)
+        super().__init__(("", PORT), SpotifyTokenHandler)
         self.token_response = None
 
 class SpotifyTokenHandler(http.server.BaseHTTPRequestHandler):
@@ -61,24 +82,23 @@ class SpotifyTokenHandler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
 
         parsed = urllib.parse.urlparse(self.path)
-
         query = urllib.parse.parse_qs(parsed.query)
+
         code = query.get("code", [""])[0]
 
-        data = urllib.parse.urlencode({
+        data = {
             "grant_type": "authorization_code",
             "code": code,
             "redirect_uri": REDIRECT_URI,
-        }).encode()
+        }
 
-        req = urllib.request.Request(
-            SPOTIFY_TOKEN_ENDPOINT,
-            data=data,
+        response = __post(
+            url=SPOTIFY_TOKEN_ENDPOINT,
+            json=data,
             headers=SPOTIFY_TOKEN_HEADERS,
         )
 
-        with urllib.request.urlopen(req) as res:
-            self.server.token_response = json.loads(res.read().decode())
+        self.server.token_response = response
 
 def read_spotify_token() -> dict[str, str]:
     if SPOTIFY_TOKEN_FILE.exists():
@@ -117,40 +137,41 @@ def refresh_token() -> dict[str, str]:
     if not refresh_token:
         return request_token()
 
-    data = urllib.parse.urlencode({
+    data = {
         "grant_type": "refresh_token",
         "scope": "user-read-currently-playing",
         "refresh_token": refresh_token,
         "client_id": SPOTIFY_CLIENT_ID,
-    }).encode()
+    }
 
-    req = urllib.request.Request(
-        SPOTIFY_TOKEN_ENDPOINT,
-        data=data,
+    token = __post(
+        url=SPOTIFY_TOKEN_ENDPOINT,
+        json=data,
         headers=SPOTIFY_TOKEN_HEADERS,
     )
-
-    with urllib.request.urlopen(req) as res:
-        token = json.loads(res.read().decode())
 
     with open(SPOTIFY_TOKEN_FILE, "w") as f:
         json.dump(token, f)
 
     return token
 
-def get_song() -> requests.Response:
+def get_song() -> str:
     token = read_spotify_token()
 
-    response = requests.get(
-        url="https://api.spotify.com/v1/me/player/currently-playing",
-        headers={"Authorization": f"Bearer {token['access_token']}"}
-    )
+    try:
+        response = __get(
+            url="https://api.spotify.com/v1/me/player/currently-playing",
+            headers={"Authorization": f"Bearer {token['access_token']}"},
+        )
 
-    if not response.content.decode():
+    except urllib.error.HTTPError as e:
+        response = read_response(e)
+
+    if not response:
         log.warn("There is no song currently playing.")
         return response
 
-    error = response.json().get("error", {})
+    error = response.get("error", {})
 
     if error.get("message") == "The access token expired":
         log.info("Token expired. Requesting a new one")
@@ -161,19 +182,16 @@ def get_song() -> requests.Response:
 
 def song_as_str(song_response: dict[str, str], flags: Optional[Namespace] = None) -> str | bool:
     try:
-        song = song_response["item"]
-
-        if song == None:
+        if (song := song_response["item"]) == None:
             if song_response["context"] == None:
                 log.info("There is no song playing. Maybe you are playing a podcast episode?")
                 log.info("Stopping the service")
 
                 return True
 
-            else:
-                log.info("There is no song playing. Maybe you got an ad?")
-                log.info("Sleeping for 5 seconds until the ads end")
-                sleep(5)
+            log.info("There is no song playing. Maybe you got an ad?")
+            log.info("Sleeping for 5 seconds until the ads end")
+            sleep(5)
 
         artist = song["artists"][0]["name"]
         name = song["name"]
@@ -193,7 +211,7 @@ def song_as_str(song_response: dict[str, str], flags: Optional[Namespace] = None
             title.append(f"({progress} / {total})")
 
         return " ".join(title)
-    
+
     except KeyError as ke:
         log.err(f"The following key is missing: {ke}")
         log.err(song_response)

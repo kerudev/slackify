@@ -1,11 +1,8 @@
 import os
 import subprocess
-import sys
 import traceback
 from argparse import Namespace
 import time
-
-from pathlib import Path
 
 from slackify import log, slack, spotify
 from slackify.constants import (
@@ -58,23 +55,7 @@ def stop():
 
     log.ok("Service stopped!")
 
-    args = {
-        "status_text": "",
-        "status_emoji": "",
-        "status_expiration": 0,
-    }
-
-    log.info("Resetting the profile info")
-    slack.set_profile(args)
-
-    if not PREV_PICTURE_FILE.exists():
-        log.warn("The previous profile picture can't be found")
-        exit(1)
-
-    log.info("Resetting the profile picture")
-
-    with open(PREV_PICTURE_FILE, "r") as f:
-        slack.set_photo(f.readline())
+    slack.reset_profile()
 
 def reset():
     __check_service_exists()
@@ -101,7 +82,7 @@ def play(arguments: Namespace):
     with open(PREV_PICTURE_FILE, "w") as f:
         f.write(previous_photo)
 
-    # Don't modify previous_photo from this point, as it's used in the except block 
+    # Don't modify previous_photo from this point, as it's used in the except block
     previous_cover_url = previous_photo
 
     try:
@@ -110,12 +91,8 @@ def play(arguments: Namespace):
                 log.info("Your status is away")
                 return
 
-            response = spotify.get_song()
-
-            if not response.content:
+            if not (song := spotify.get_song()):
                 return
-
-            song = response.json()
 
             if not (title := spotify.song_as_str(song, arguments)):
                 stop()
@@ -148,14 +125,4 @@ def play(arguments: Namespace):
         log.err(f"{type(e).__name__}: {e}")
         traceback.print_exc()
 
-        args = {
-            "status_text": "",
-            "status_emoji": "",
-            "status_expiration": 0,
-        }
-
-        log.info("Resetting the profile info")
-        slack.set_profile(args)
-
-        log.info("Resetting the profile picture")
-        slack.set_photo(previous_photo)
+        slack.reset_profile(previous_photo)

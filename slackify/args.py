@@ -17,7 +17,7 @@ def parse() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
 
     subparsers = parser.add_subparsers(dest="command", required=True)
-    
+
     play = subparsers.add_parser(Command.PLAY.value, help="Initializes Slackify in the current shell session")
 
     play_group = play.add_mutually_exclusive_group(required=False)

@@ -1,7 +1,15 @@
+import gzip
+import http
+import http.client
+import json
 import os
 from pathlib import Path
 import subprocess
 import sys
+import urllib.request
+import zlib
+
+import urllib
 
 from slackify import log
 from slackify.constants import CONF_FILE, ENV_FILE, SERVICE_PATH, TMP_SERVICE_PATH
@@ -29,6 +37,23 @@ def get_flags() -> dict[str, str]:
 
 def get_token(key: str) -> str:
     return os.getenv(key, read_tokens().get(key))
+
+def read_response(res: http.client.HTTPResponse):
+    raw = res.read()
+    encoding = res.headers.get("Content-Encoding")
+
+    if encoding == "gzip":
+        body = gzip.decompress(raw)
+    elif encoding == "deflate":
+        body = zlib.decompress(raw)
+    else:
+        body = {}
+
+    return json.loads(body)
+
+def dispatch(req: urllib.request.Request):
+    with urllib.request.urlopen(req) as res:
+        return read_response(res)
 
 def init_service():
     if SERVICE_PATH.exists():

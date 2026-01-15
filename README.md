@@ -1,6 +1,6 @@
 # Slackify
 
-Slackify is a lightweight script that updates your Slack status with the song
+Slackify is a lightweight library that updates your Slack status with the song
 you're currently playing on Spotify.
 
 It features:
@@ -42,14 +42,24 @@ the Spotify user account. Here is a quick guide on how I got them:
 
 ## How to use
 
+Although slackify has no dependencies, it requires your system to be `Linux`
+or `macOS` to run the following commands:
+- `init`
+- `status`
+- `start`
+- `stop`
+- `reset`
+
+This is because they require `systemctl` to run slackify as a process.
+
 ### play
 
 Initializes slackify in the current shell session.
 
 It accepts the following flags:
-  - `album`: displays the song's album title (if it's not a single)
-  - `progress`: displays the current progress through the song
-  - `cover`: temporarily sets your profile picture to the song's cover
+- `album`: displays the song's album title (if it's not a single)
+- `progress`: displays the current progress through the song
+- `cover`: temporarily sets your profile picture to the song's cover
 
 ### init
 
@@ -60,7 +70,7 @@ Also reloads the all unit files by running `sudo systemctl daemon-reload`.
 
 - `~/.config/slackify/slackify.conf`: contains the service's configuration.\
 It it changes, the service has to stop so the changes are applied.
-The allowed values are the same as the `play` flags. 
+The allowed values are the same as the `play` flags.
 ```conf
 album=true
 progress=false

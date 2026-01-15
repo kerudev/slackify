@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "slackify"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Slack integration with Spotify that shows the currently playing song in the user's status"
 readme = "README.md"
 license = "MIT"
@@ -32,6 +32,14 @@ dev = [
     "pre-commit>=4.4.0",
     "ruff>=0.14.3",
 ]
+
+build = [
+    "build>=1.4.0",
+    "twine>=6.2.0",
+]
+
+[tool.setuptools.dynamic]
+version = {attr = "slackify.__version__"}
 
 [tool.ruff]
 line-length = 90

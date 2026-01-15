@@ -10,12 +10,13 @@
 .venv
 env/
 venv/
+.python-version
 
 # Caches
 __pycache__/
 .pytest_cache/
 .ruff_cache
 
-# Artifacts
+# Build artifacts
+dist/
 *.egg-info
-.python-version

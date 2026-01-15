@@ -15,10 +15,3 @@ TOKEN_KEYS = ["SLACK_TOKEN", "SPOTIFY_CLIENT_ID", "SPOTIFY_CLIENT_SECRET"]
 # Service specific paths
 TMP_SERVICE_PATH = Path("/tmp/slackify.service")
 SERVICE_PATH = Path("/usr/lib/systemd/system/slackify.service")
-
-LIB_HEADERS = {
-    "User-Agent": f"slackify/{'.'.join(str(x) for x in VERSION)} (+https://github.com/kerudev/slackify)",
-    "Accept-Encoding": "gzip, deflate",
-    "Accept": "*/*",
-    "Connection": "keep-alive",
-}

@@ -1,5 +1,4 @@
 import gzip
-import http
 import http.client
 import json
 import os
@@ -38,22 +37,31 @@ def get_flags() -> dict[str, str]:
 def get_token(key: str) -> str:
     return os.getenv(key, read_tokens().get(key))
 
-def read_response(res: http.client.HTTPResponse):
-    raw = res.read()
-    encoding = res.headers.get("Content-Encoding")
+def read_response(res: http.client.HTTPResponse) -> str | bytes:
+    raw = res.read() or b"{}"
+    headers = res.headers or {}
+
+    if "image" in headers.get("Content-Type", ""):
+        return raw
+
+    encoding = headers.get("Content-Encoding")
 
     if encoding == "gzip":
         body = gzip.decompress(raw)
     elif encoding == "deflate":
         body = zlib.decompress(raw)
     else:
-        body = {}
+        body = raw.decode()
 
     return json.loads(body)
 
-def dispatch(req: urllib.request.Request):
-    with urllib.request.urlopen(req) as res:
-        return read_response(res)
+def dispatch(req: urllib.request.Request) -> str | bytes:
+    try:
+        with urllib.request.urlopen(req) as res:
+            return read_response(res)
+
+    except urllib.error.HTTPError as e:
+        return read_response(e)
 
 def init_service():
     if SERVICE_PATH.exists():

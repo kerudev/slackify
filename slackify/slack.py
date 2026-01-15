@@ -1,8 +1,9 @@
 from typing import Any
 import urllib.request
+import uuid
 
 from slackify import log
-from slackify.constants import LIB_HEADERS, PREV_PICTURE_FILE
+from slackify.constants import PREV_PICTURE_FILE
 from slackify.utils import get_token, dispatch
 
 SLACK_TOKEN = get_token("SLACK_TOKEN")
@@ -18,23 +19,32 @@ API_URL = "https://slack.com/api"
 def __url(slug: str) -> str:
     return f"{API_URL}/{slug}"
 
-def __post(url: str, json: dict[str, Any], headers: dict[str, Any] = SLACK_HEADERS) -> str:
-    headers = {**LIB_HEADERS, **headers}
+def _post(
+    url: str,
+    json: dict[str, Any],
+    headers: dict[str, Any] = SLACK_HEADERS,
+    encode_json: bool = True,
+) -> str | bytes:
+    data = str(json).encode() if encode_json else json
 
     req = urllib.request.Request(
         url=__url(url),
         headers=headers,
-        data=str(json).encode('utf-8'),
+        data=data,
         method="POST",
     )
 
     return dispatch(req)
 
-def __get(url: str, headers: dict[str, Any] = SLACK_HEADERS) -> str:
-    headers = {**LIB_HEADERS, **headers}
+def _get(
+    url: str,
+    headers: dict[str, Any] = SLACK_HEADERS,
+    parse_url: bool = True,
+) -> str | bytes:
+    url = __url(url) if parse_url else url
 
     req = urllib.request.Request(
-        url=__url(url),
+        url=url,
         headers=headers,
         method="GET",
     )
@@ -42,15 +52,15 @@ def __get(url: str, headers: dict[str, Any] = SLACK_HEADERS) -> str:
     return dispatch(req)
 
 def get_presence() -> str:
-    response = __get("users.getPresence")
+    response = _get("users.getPresence")
     return response["presence"]
 
 def get_profile() -> dict[str, Any]:
-    response = __get("users.profile.get")
+    response = _get("users.profile.get")
     return response["profile"]
 
 def set_profile(args: dict[str, str]) -> str:
-    return __post(
+    return _post(
         url="users.profile.set",
         json={"profile": args},
     )
@@ -77,20 +87,28 @@ def reset_profile(image_url: str) -> str:
     set_photo(image_url)
 
 def set_photo(image_url: str) -> str:
-    response = __get(image_url)
-    image_bytes = response.content
-    content_type = response.headers.get("Content-Type", "image/jpeg")
+    response: bytes = _get(image_url, parse_url=False)
+
+    boundary = uuid.uuid4().hex
+
+    body = (
+        f"--{boundary}\r\n"
+        f'Content-Disposition: form-data; name="image"; filename="cover.jpg"\r\n'
+        f'Content-Type: image/jpeg\r\n\r\n'
+    ).encode()
+
+    body += response
+    body += f"\r\n--{boundary}--\r\n".encode()
 
     headers = {
         "Authorization": SLACK_HEADERS["Authorization"],
+        "Content-Type": f"multipart/form-data; boundary={boundary}",
+        "Content-Length": str(len(body)),
     }
 
-    args = {
-        "image": ("cover.jpg", image_bytes, content_type)
-    }
-
-    return __post(
+    return _post(
         url="users.setPhoto",
         headers=headers,
-        files=args,
+        json=body,
+        encode_json=False,
     )

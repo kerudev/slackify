@@ -70,14 +70,14 @@ def play(arguments: Namespace):
         log.warn("The Slackify process is running. Stop it before using this command")
         return
 
-    flags = get_flags()
+    if os.getenv("SLACKIFY_SERVICE"):
+        flags = get_flags()
 
-    if os.getenv("SLACKIFY_SERVICE") and flags:
         arguments.album = flags.get("album", False)
         arguments.progress = flags.get("progress", False)
         arguments.cover = flags.get("cover", False)
 
-    previous_photo = slack.get_profile()["image_512"]
+    previous_photo: str = slack.get_profile()["image_512"]
 
     with open(PREV_PICTURE_FILE, "w") as f:
         f.write(previous_photo)
@@ -106,6 +106,7 @@ def play(arguments: Namespace):
                 "status_expiration": 0
             }
 
+            time.sleep(2)
             slack.set_profile(args)
 
             if not arguments.cover:
@@ -118,8 +119,6 @@ def play(arguments: Namespace):
 
             previous_cover_url = cover_url
             slack.set_photo(cover_url)
-
-            time.sleep(2)
 
     except (Exception, KeyboardInterrupt) as e:
         log.err(f"{type(e).__name__}: {e}")

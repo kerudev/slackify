@@ -1,5 +1,8 @@
 # Slackify
 
+[![PyPI - Version](https://img.shields.io/pypi/v/slackify)](https://pypi.org/project/slackify/)
+[![PyPI - Python](https://img.shields.io/pypi/pyversions/slackify)](https://pypi.org/project/slackify/)
+
 Slackify is a lightweight library that updates your Slack status with the song
 you're currently playing on Spotify.
 

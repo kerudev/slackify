@@ -12,9 +12,9 @@ import webbrowser
 from argparse import Namespace
 from typing import Any
 
-from slackify import log
-from slackify.constants import CONFIG_PATH
-from slackify.utils import dispatch, get_token
+from slackfm import log
+from slackfm.constants import CONFIG_PATH
+from slackfm.utils import dispatch, get_token
 
 SPOTIFY_TOKEN_ENDPOINT = "https://accounts.spotify.com/api/token"
 

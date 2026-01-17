@@ -1,15 +1,15 @@
-# Slackify
+# SlackFM
 
-[![PyPI - Version](https://img.shields.io/pypi/v/slackify)](https://pypi.org/project/slackify/)
-[![PyPI - Python](https://img.shields.io/pypi/pyversions/slackify)](https://pypi.org/project/slackify/)
+[![PyPI - Version](https://img.shields.io/pypi/v/slackfm)](https://pypi.org/project/slackfm/)
+[![PyPI - Python](https://img.shields.io/pypi/pyversions/slackfm)](https://pypi.org/project/slackfm/)
 
-Slackify is a lightweight library that updates your Slack status with the song
+SlackFM is a lightweight library that updates your Slack status with the song
 you're currently playing on Spotify.
 
 It features:
 - Zero dependencies.
 - Service creation and management using systemctl.
-- Various commands to use Slackify.
+- Various commands to use SlackFM.
 - Flags and configuration file to control the program's behavior.
 - Automatic token refreshing for Spotify.
 
@@ -45,7 +45,7 @@ the Spotify user account. Here is a quick guide on how I got them:
 
 ## How to use
 
-Although slackify has no dependencies, it requires your system to be `Linux`
+Although slackfm has no dependencies, it requires your system to be `Linux`
 or `macOS` to run the following commands:
 - `init`
 - `status`
@@ -53,11 +53,11 @@ or `macOS` to run the following commands:
 - `stop`
 - `reset`
 
-This is because they require `systemctl` to run slackify as a process.
+This is because they require `systemctl` to run slackfm as a process.
 
 ### play
 
-Initializes slackify in the current shell session.
+Initializes slackfm in the current shell session.
 
 It accepts the following flags:
 - `album`: displays the song's album title (if it's not a single)
@@ -67,11 +67,11 @@ It accepts the following flags:
 ### init
 
 Creates the following files:
-- `/usr/lib/systemd/system/slackify.service`: the Slackify service itself.\
-It is used through `./slackify.py start` and `./slackify.py stop`.
+- `/usr/lib/systemd/system/slackfm.service`: the Slackfm service itself.\
+It is used through `./slackfm.py start` and `./slackfm.py stop`.
 Also reloads the all unit files by running `sudo systemctl daemon-reload`.
 
-- `~/.config/slackify/slackify.conf`: contains the service's configuration.\
+- `~/.config/slackfm/slackfm.conf`: contains the service's configuration.\
 It it changes, the service has to stop so the changes are applied.
 The allowed values are the same as the `play` flags.
 ```conf
@@ -80,7 +80,7 @@ progress=false
 cover=true
 ```
 
-- `~/.config/slackify/slackify.env`: contains the previously mentioned credentials.
+- `~/.config/slackfm/slackfm.env`: contains the previously mentioned credentials.
 ```env
 SLACK_TOKEN=your-slack-token
 SPOTIFY_CLIENT_ID=your-spotify-client-id
@@ -89,18 +89,18 @@ SPOTIFY_CLIENT_SECRET=your-spotify-client-secret
 
 ### status
 
-Runs `systemctl is-active slackify.service`.
+Runs `systemctl is-active slackfm.service`.
 
 ### start
 
-Runs `sudo systemctl start slackify.service`, which is the same as
-calling `./slackify.py play` but from a service. Arguments will be read from
-`~/.config/slackify/slackify.conf`.
+Runs `sudo systemctl start slackfm.service`, which is the same as
+calling `./slackfm.py play` but from a service. Arguments will be read from
+`~/.config/slackfm/slackfm.conf`.
 
 ### stop
 
-Runs `sudo systemctl stop slackify.service`.
+Runs `sudo systemctl stop slackfm.service`.
 
 ### reset
 
-Runs `sudo systemctl stop slackify.service`, then `sudo systemctl start slackify.service`.
+Runs `sudo systemctl stop slackfm.service`, then `sudo systemctl start slackfm.service`.

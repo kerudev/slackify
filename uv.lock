@@ -650,7 +650,7 @@ wheels = [
 ]
 
 [[package]]
-name = "slackify"
+name = "slackfm"
 source = { editable = "." }
 
 [package.dev-dependencies]

@@ -10,8 +10,8 @@ import zlib
 
 import urllib
 
-from slackify import log
-from slackify.constants import CONF_FILE, ENV_FILE, SERVICE_PATH, TMP_SERVICE_PATH
+from slackfm import log
+from slackfm.constants import CONF_FILE, ENV_FILE, SERVICE_PATH, TMP_SERVICE_PATH
 
 def file_to_dict(filename: Path) -> list[str]:
     if not filename.exists():
@@ -65,22 +65,22 @@ def dispatch(req: urllib.request.Request) -> str | bytes:
 
 def init_service():
     if SERVICE_PATH.exists():
-        log.warn(f"The Slackify service already exists at '{SERVICE_PATH}'")
+        log.warn(f"The SlackFM service already exists at '{SERVICE_PATH}'")
         log.warn("The service will be overwritten")
 
     log.info(f"Creating service at '{SERVICE_PATH}'")
 
-    slackify = Path(sys.argv[0]).resolve()
+    slackfm = Path(sys.argv[0]).resolve()
 
     with open(TMP_SERVICE_PATH, "w") as f:
         f.write(f"""[Unit]
-Description=Slackify
+Description=SlackFM
 After=network.target
 
 [Service]
-Environment=SLACKIFY_SERVICE=1
+Environment=SLACKFM_SERVICE=1
 EnvironmentFile={ENV_FILE}
-ExecStart={slackify} play
+ExecStart={slackfm} play
 TimeoutStartSec=0
 Restart=always
 RestartSec=5
@@ -95,7 +95,7 @@ WantedBy=multi-user.target
 
 def get_service_status() -> str:
     result = subprocess.run(
-        ["systemctl", "is-active", "slackify.service"],
+        ["systemctl", "is-active", "slackfm.service"],
         capture_output=True,
         check=False
     )

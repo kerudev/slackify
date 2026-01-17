@@ -2,9 +2,9 @@ from typing import Any
 import urllib.request
 import uuid
 
-from slackify import log
-from slackify.constants import PREV_PICTURE_FILE
-from slackify.utils import get_token, dispatch
+from slackfm import log
+from slackfm.constants import PREV_PICTURE_FILE
+from slackfm.utils import get_token, dispatch
 
 SLACK_TOKEN = get_token("SLACK_TOKEN")
 

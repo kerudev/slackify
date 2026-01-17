@@ -4,18 +4,18 @@ import traceback
 from argparse import Namespace
 import time
 
-from slackify import log, slack, spotify
-from slackify.constants import (
+from slackfm import log, slack, spotify
+from slackfm.constants import (
     ENV_FILE,
     PREV_PICTURE_FILE,
     SERVICE_PATH,
     TOKEN_KEYS,
 )
-from slackify.utils import get_flags, get_service_status, init_service, read_tokens
+from slackfm.utils import get_flags, get_service_status, init_service, read_tokens
 
 def __check_service_exists():
     if not SERVICE_PATH.exists():
-        log.warn(f"The Slackify service doesn't exist at '{SERVICE_PATH}'")
+        log.warn(f"The SlackFM service doesn't exist at '{SERVICE_PATH}'")
         init()
 
 def init():
@@ -43,7 +43,7 @@ def start():
         exit(1)
 
     log.info("Starting the service")
-    subprocess.run(["sudo", "systemctl", "start", "slackify.service"], check=True)
+    subprocess.run(["sudo", "systemctl", "start", "slackfm.service"], check=True)
 
     log.ok("Service started!")
 
@@ -51,7 +51,7 @@ def stop():
     __check_service_exists()
 
     log.info("Stopping the service")
-    subprocess.run(["sudo", "systemctl", "stop", "slackify.service"], check=True)
+    subprocess.run(["sudo", "systemctl", "stop", "slackfm.service"], check=True)
 
     log.ok("Service stopped!")
 
@@ -61,16 +61,16 @@ def reset():
     __check_service_exists()
 
     log.info("Resetting the service")
-    subprocess.run(["sudo", "systemctl", "restart", "slackify.service"], check=True)
+    subprocess.run(["sudo", "systemctl", "restart", "slackfm.service"], check=True)
 
     log.ok("Service resetted!")
 
 def play(arguments: Namespace):
-    if os.getenv("SLACKIFY_SERVICE") != "1" and get_service_status() == "active":
-        log.warn("The Slackify process is running. Stop it before using this command")
+    if os.getenv("SLACKFM_SERVICE") != "1" and get_service_status() == "active":
+        log.warn("The SlackFM process is running. Stop it before using this command")
         return
 
-    if os.getenv("SLACKIFY_SERVICE"):
+    if os.getenv("SLACKFM_SERVICE"):
         flags = get_flags()
 
         arguments.album = flags.get("album", False)

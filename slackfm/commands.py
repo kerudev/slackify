@@ -4,7 +4,8 @@ import time
 import traceback
 from argparse import Namespace
 
-from slackfm import log, slack, spotify
+from slackfm import log
+from slackfm.api import slack, spotify
 from slackfm.constants import (
     ENV_FILE,
     PREV_PICTURE_FILE,

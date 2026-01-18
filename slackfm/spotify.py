@@ -5,11 +5,11 @@ import os
 import random
 import socketserver
 import string
-from time import sleep
 import urllib.parse
 import urllib.request
 import webbrowser
 from argparse import Namespace
+from time import sleep
 from typing import Any
 
 from slackfm import log
@@ -25,7 +25,9 @@ os.makedirs(SPOTIFY_TOKEN_PATH, exist_ok=True)
 SPOTIFY_CLIENT_ID = get_token("SPOTIFY_CLIENT_ID")
 SPOTIFY_CLIENT_SECRET = get_token("SPOTIFY_CLIENT_SECRET")
 
-SPOTIFY_ENCODED_AUTH = base64.b64encode(f"{SPOTIFY_CLIENT_ID}:{SPOTIFY_CLIENT_SECRET}".encode()).decode()
+SPOTIFY_ENCODED_AUTH = base64.b64encode(
+    f"{SPOTIFY_CLIENT_ID}:{SPOTIFY_CLIENT_SECRET}".encode()
+).decode()
 
 SPOTIFY_TOKEN_HEADERS = {
     "Authorization": f"Basic {SPOTIFY_ENCODED_AUTH}",
@@ -35,6 +37,7 @@ SPOTIFY_TOKEN_HEADERS = {
 # Used to request the token for the first time (or if it isn't stored in a file)
 PORT = 8888
 REDIRECT_URI = f"http://127.0.0.1:{PORT}/callback"
+
 
 def __calc_time(millis: int) -> str:
     total_secs = millis // 1000
@@ -54,6 +57,7 @@ def _get(url: str, headers: dict[str, Any]) -> str:
 
     return dispatch(req)
 
+
 def _post(url: str, json: dict[str, Any], headers: dict[str, Any]) -> str:
     data = urllib.parse.urlencode(json).encode()
 
@@ -65,6 +69,7 @@ def _post(url: str, json: dict[str, Any], headers: dict[str, Any]) -> str:
 
     return dispatch(req)
 
+
 class ReusableTCPServer(socketserver.TCPServer):
     allow_reuse_address = True
 
@@ -72,8 +77,9 @@ class ReusableTCPServer(socketserver.TCPServer):
         super().__init__(("", PORT), SpotifyTokenHandler)
         self.token_response = None
 
+
 class SpotifyTokenHandler(http.server.BaseHTTPRequestHandler):
-    def do_GET(self):
+    def do_GET(self):  # noqa: N802
         self.send_response(302)
         self.send_header("Location", "https://open.spotify.com/")
         self.end_headers()
@@ -97,6 +103,7 @@ class SpotifyTokenHandler(http.server.BaseHTTPRequestHandler):
 
         self.server.token_response = response
 
+
 def read_token() -> dict[str, str]:
     if SPOTIFY_TOKEN_FILE.exists():
         with open(SPOTIFY_TOKEN_FILE, "r") as f:
@@ -108,6 +115,7 @@ def read_token() -> dict[str, str]:
         json.dump(token, f)
 
     return token
+
 
 def request_token() -> dict[str, str]:
     chars = string.ascii_uppercase + string.digits
@@ -121,11 +129,14 @@ def request_token() -> dict[str, str]:
         "state": state,
     }
 
+    url = "https://accounts.spotify.com/authorize?" + urllib.parse.urlencode(params)
+
     with ReusableTCPServer() as httpd:
-        webbrowser.open("https://accounts.spotify.com/authorize?" + urllib.parse.urlencode(params))
+        webbrowser.open(url)
         httpd.handle_request()
 
         return httpd.token_response
+
 
 def refresh_token() -> dict[str, str]:
     with open(SPOTIFY_TOKEN_FILE, "r") as f:
@@ -157,6 +168,7 @@ def refresh_token() -> dict[str, str]:
 
     return token
 
+
 def get_song() -> str:
     token = read_token()
 
@@ -178,11 +190,14 @@ def get_song() -> str:
 
     return response
 
+
 def song_as_str(song_response: dict[str, str], flags: Namespace) -> str | bool:
     try:
-        if (song := song_response["item"]) == None:
-            if song_response["context"] == None:
-                log.info("There is no song playing. Maybe you are playing a podcast episode?")
+        if (song := song_response["item"]) is None:
+            if song_response["context"] is None:
+                log.info(
+                    "There is no song playing. Maybe you are playing a podcast episode?"
+                )
                 log.info("Stopping the service")
 
                 return True

@@ -1,8 +1,8 @@
 import argparse
-from enum import Enum
 import os
+from enum import Enum
 
-from slackfm import log, commands
+from slackfm import commands, log
 
 
 class Command(str, Enum):
@@ -13,24 +13,56 @@ class Command(str, Enum):
     STOP = "stop"
     RESET = "reset"
 
+
 def parse() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
 
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    play = subparsers.add_parser(Command.PLAY.value, help="Initializes SlackFM in the current shell session")
-    play.add_argument("--album", action="store_true", help="Displays the song's album title (if it's not a single)")
-    play.add_argument("--progress", action="store_true", help="Show the song's progress (time until it finishes)")
-    play.add_argument("--cover", action="store_true", help="Temporarily sets your profile picture to the song's cover")
+    play = subparsers.add_parser(
+        Command.PLAY.value,
+        help="Initializes SlackFM in the current shell session",
+    )
+    play.add_argument(
+        "--album",
+        action="store_true",
+        help="Displays the song's album title (if it's not a single)",
+    )
+    play.add_argument(
+        "--progress",
+        action="store_true",
+        help="Show the song's progress (time until it finishes)",
+    )
+    play.add_argument(
+        "--cover",
+        action="store_true",
+        help="Temporarily sets your profile picture to the song's cover",
+    )
 
     if os.name != "nt":
-        subparsers.add_parser(Command.INIT.value,   help="(systemctl) Creates the SlackFM system service")
-        subparsers.add_parser(Command.STATUS.value, help="(systemctl) Displays the status of the SlackFM service")
-        subparsers.add_parser(Command.START.value,  help="(systemctl) Starts SlackFM as a system service")
-        subparsers.add_parser(Command.STOP.value,   help="(systemctl) Stops SlackFM as a system service")
-        subparsers.add_parser(Command.RESET.value,  help="(systemctl) Stop the SlackFM service to start it again")
+        subparsers.add_parser(
+            Command.INIT.value,
+            help="(systemctl) Creates the SlackFM system service",
+        )
+        subparsers.add_parser(
+            Command.STATUS.value,
+            help="(systemctl) Displays the status of the SlackFM service",
+        )
+        subparsers.add_parser(
+            Command.START.value,
+            help="(systemctl) Starts SlackFM as a system service",
+        )
+        subparsers.add_parser(
+            Command.STOP.value,
+            help="(systemctl) Stops SlackFM as a system service",
+        )
+        subparsers.add_parser(
+            Command.RESET.value,
+            help="(systemctl) Stop the SlackFM service to start it again",
+        )
 
     return parser.parse_args()
+
 
 def main():
     arguments = parse()

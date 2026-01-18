@@ -1,8 +1,8 @@
 import os
 import subprocess
+import time
 import traceback
 from argparse import Namespace
-import time
 
 from slackfm import log, slack, spotify
 from slackfm.constants import (
@@ -13,10 +13,12 @@ from slackfm.constants import (
 )
 from slackfm.utils import get_flags, get_service_status, init_service, read_tokens
 
+
 def __check_service_exists():
     if not SERVICE_PATH.exists():
         log.warn(f"The SlackFM service doesn't exist at '{SERVICE_PATH}'")
         init()
+
 
 def init():
     init_service()
@@ -26,19 +28,21 @@ def init():
 
     log.ok("Reload finished!")
 
+
 def status():
     __check_service_exists()
 
     log.info("Checking the service's status")
     log.info(f"The service's status is '{get_service_status()}'")
 
+
 def start():
     __check_service_exists()
 
     if missing_keys := TOKEN_KEYS - read_tokens().keys():
-        log.warn(f"The following keys neither set as env vars nor in the '{ENV_FILE}' file:")
+        log.warn("The following keys were not set:")
         [log.warn(f"- {key}") for key in missing_keys]
-        log.warn("Please set them before continuing")
+        log.warn(f"Please set them as env vars or in the '{ENV_FILE}' file")
 
         exit(1)
 
@@ -46,6 +50,7 @@ def start():
     subprocess.run(["sudo", "systemctl", "start", "slackfm.service"], check=True)
 
     log.ok("Service started!")
+
 
 def stop():
     __check_service_exists()
@@ -57,6 +62,7 @@ def stop():
 
     slack.reset_profile()
 
+
 def reset():
     __check_service_exists()
 
@@ -64,6 +70,7 @@ def reset():
     subprocess.run(["sudo", "systemctl", "restart", "slackfm.service"], check=True)
 
     log.ok("Service resetted!")
+
 
 def play(arguments: Namespace):
     if os.getenv("SLACKFM_SERVICE") != "1" and get_service_status() == "active":
@@ -103,7 +110,7 @@ def play(arguments: Namespace):
             args = {
                 "status_text": title,
                 "status_emoji": ":musical_note:",
-                "status_expiration": 0
+                "status_expiration": 0,
             }
 
             time.sleep(2)

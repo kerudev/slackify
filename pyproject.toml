@@ -27,8 +27,14 @@ classifiers = [
 ]
 dependencies = []
 
+[project.optional-dependencies]
+browser = [
+    "playwright>=1.57.0",
+]
+
 [dependency-groups]
 dev = [
+    "slackfm[browser]",
     "pre-commit>=4.4.0",
     "ruff>=0.14.3",
 ]

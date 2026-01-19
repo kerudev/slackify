@@ -5,7 +5,7 @@ import traceback
 from argparse import Namespace
 
 from slackfm import log
-from slackfm.api import slack, spotify
+from slackfm.api import spotify
 from slackfm.constants import (
     ENV_FILE,
     PREV_PICTURE_FILE,
@@ -13,6 +13,12 @@ from slackfm.constants import (
     TOKEN_KEYS,
 )
 from slackfm.utils import get_flags, get_service_status, init_service, read_tokens
+
+# TMP
+try:
+    from slackfm.browser import slack
+except ImportError:
+    from slackfm.api import slack
 
 
 def __check_service_exists():

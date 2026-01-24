@@ -1,5 +1,14 @@
-from playwright.sync_api import Page, Playwright, sync_playwright
+try:
+    from playwright.sync_api import Page, Playwright, sync_playwright
+except ImportError as e:
+    raise RuntimeError(
+        "To use the --browser flag, please install the browser dependencies:\n"
+        "- pip install slackfm[browser]\n"
+        "\n"
+        "You may be asked to install additional dependencies for Playwright.\n"
+    ) from e
 
+from slackfm import log
 from slackfm.api.slack import _get
 from slackfm.constants import CONFIG_PATH
 from slackfm.log import info
@@ -19,7 +28,7 @@ def _start_page():
     context = browser.new_context(storage_state=STORAGE)
 
     page = context.new_page()
-    page.goto("https://app.slack.com/client/T08UMJSTMGV")
+    page.goto("https://app.slack.com/client/T08UMJSTMGV", wait_until="domcontentloaded")
 
     _open_user_menu(page)
 
@@ -65,24 +74,24 @@ def _open_user_menu(page: Page):
         return
 
     if not page.is_visible(".p-view_contents"):
-        # Click on user profile to get menu
+        log.info("Click on user profile to get menu")
         page.click(".p-ia__nav__user__button")
 
-        # Click the Profile option
+        log.info("Click the Profile option")
         page.click('.c-menu_item__label:text("Profile")')
 
 
 def _open_edit_profile(page: Page):
     _open_user_menu(page)
 
-    # Click Edit
+    log.info("Click 'Edit' to change profile")
     page.click(".p-r_member_profile__name__edit")
 
 
 def _open_edit_status(page: Page):
     _open_user_menu(page)
 
-    # Click Edit
+    log.info("Click 'Edit' to change status")
     page.click('[data-qa="member_profile_status_btn"]')
 
 

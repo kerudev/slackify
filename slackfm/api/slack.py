@@ -86,6 +86,7 @@ def reset_profile(image_url: str) -> str:
             log.warn("The previous profile picture can't be found")
             exit(1)
 
+        # TODO save as a json with the picture URL and the previous status
         with open(PREV_PICTURE_FILE, "r") as f:
             image_url = f.readline()
 

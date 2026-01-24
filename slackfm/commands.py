@@ -14,10 +14,9 @@ from slackfm.constants import (
 )
 from slackfm.utils import get_flags, get_service_status, init_service, read_tokens
 
-# TMP
-try:
+if int(os.getenv("SLACKFM_BROWSER", 0)):
     from slackfm.browser import slack
-except ImportError:
+else:
     from slackfm.api import slack
 
 
@@ -79,12 +78,12 @@ def reset():
     log.ok("Service resetted!")
 
 
-def play(arguments: Namespace):
+def play(arguments: Namespace):  # noqa: C901  # TODO refactor
     if os.getenv("SLACKFM_SERVICE") != "1" and get_service_status() == "active":
         log.warn("The SlackFM process is running. Stop it before using this command")
         return
 
-    if os.getenv("SLACKFM_SERVICE"):
+    if int(os.getenv("SLACKFM_SERVICE", 0)):
         flags = get_flags()
 
         arguments.album = flags.get("album", False)
@@ -93,14 +92,15 @@ def play(arguments: Namespace):
 
     previous_photo: str = slack.get_profile()["image_512"]
 
+    # TODO first request returns None for browser
     with open(PREV_PICTURE_FILE, "w") as f:
         f.write(previous_photo)
 
     # Don't modify previous_photo from this point, as it's used in the except block
     previous_cover_url = previous_photo
 
-    try:
-        while True:
+    while True:
+        try:
             if slack.get_presence() == "away":
                 log.info("Your status is away")
                 return
@@ -108,7 +108,7 @@ def play(arguments: Namespace):
             if not (song := spotify.get_song()):
                 return
 
-            if not (title := spotify.song_as_str(song, arguments)):
+            if not (title := spotify.format_song(song, arguments)):
                 stop()
                 return
 
@@ -134,8 +134,25 @@ def play(arguments: Namespace):
             previous_cover_url = cover_url
             slack.set_photo(cover_url)
 
-    except (Exception, KeyboardInterrupt) as e:
-        log.err(f"{type(e).__name__}: {e}")
-        traceback.print_exc()
+        except RuntimeError as e:
+            # Raised by `format_song` when there is no song playing, but an ad or podcast.
+            # In this case we want to request the song again.
 
-        slack.reset_profile(previous_photo)
+            sleep_msg = "you play a song" if song["context"] is None else "the ads end"
+
+            log.warn(f"There is no song playing. {str(e)}")
+            log.warn(f"Sleeping for 5 seconds until {sleep_msg}")
+
+            time.sleep(5)
+
+        except KeyboardInterrupt:
+            log.warn("Stopping execution")
+            slack.reset_profile(previous_photo)
+
+            exit(0)
+
+        except Exception as e:
+            log.err(f"{type(e).__name__}: {e}")
+            traceback.print_exc()
+
+            exit(1)

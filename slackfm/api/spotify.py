@@ -9,7 +9,6 @@ import urllib.parse
 import urllib.request
 import webbrowser
 from argparse import Namespace
-from time import sleep
 from typing import Any
 
 from slackfm import log
@@ -191,42 +190,31 @@ def get_song() -> str:
     return response
 
 
-def song_as_str(song_response: dict[str, str], flags: Namespace) -> str | bool:
-    try:
-        if (song := song_response["item"]) is None:
-            if song_response["context"] is None:
-                log.info(
-                    "There is no song playing. Maybe you are playing a podcast episode?"
-                )
-                log.info("Stopping the service")
+def format_song(response: dict[str, str], flags: Namespace) -> str:
+    if (song := response["item"]) is None:
+        no_song_msg = (
+            "Maybe you are playing a podcast episode?"
+            if response["context"] is None
+            else "Maybe you got an ad?"
+        )
 
-                return True
+        raise RuntimeError(no_song_msg)
 
-            log.info("There is no song playing. Maybe you got an ad?")
-            log.info("Sleeping for 5 seconds until the ads end")
-            sleep(5)
+    artist = song["artists"][0]["name"]
+    name = song["name"]
 
-        artist = song["artists"][0]["name"]
-        name = song["name"]
+    title = [f"{artist} - {name}"]
 
-        title = [f"{artist} - {name}"]
+    if flags.album and song["album"]["album_type"] != "single":
+        title.append(f"({song['album']['name']})")
 
-        if flags.album and song["album"]["album_type"] != "single":
-            title.append(f"({song['album']['name']})")
+    if flags.progress:
+        progress_ms = response["progress_ms"]
+        total_ms = song["duration_ms"]
 
-        if flags.progress:
-            progress_ms = song_response["progress_ms"]
-            total_ms = song["duration_ms"]
+        progress = __calc_time(progress_ms)
+        total = __calc_time(total_ms)
 
-            progress = __calc_time(progress_ms)
-            total = __calc_time(total_ms)
+        title.append(f"({progress} / {total})")
 
-            title.append(f"({progress} / {total})")
-
-        return " ".join(title)
-
-    except KeyError as ke:
-        log.err(f"The following key is missing: {ke}")
-        log.err(song_response)
-
-        return True
+    return " ".join(title)

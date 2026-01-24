@@ -2,7 +2,7 @@ import argparse
 import os
 from enum import Enum
 
-from slackfm import commands, log
+from slackfm import log
 
 
 class Command(str, Enum):
@@ -14,6 +14,11 @@ class Command(str, Enum):
     RESET = "reset"
 
 
+# TODO add --debug (log everything, by default False and log warns and errors)
+# TODO add --service
+# TODO add reset command that brings back the previous state of your profile
+
+
 def parse() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
 
@@ -22,6 +27,11 @@ def parse() -> argparse.Namespace:
     play = subparsers.add_parser(
         Command.PLAY.value,
         help="Initializes SlackFM in the current shell session",
+    )
+    play.add_argument(
+        "--browser",
+        action="store_true",
+        help="Run slackfm in a headless browser instance",
     )
     play.add_argument(
         "--album",
@@ -69,6 +79,13 @@ def main():
 
     if os.getuid() != 0:
         log.warn("You may be asked to authenticate as sudo.")
+
+    if arguments.browser:
+        os.environ["SLACKFM_BROWSER"] = "1"
+
+    # Import here after setting SLACKFM_BROWSER to import the correct backend
+    # for slack
+    from slackfm import commands
 
     if not (func := getattr(commands, arguments.command, None)):
         log.err(f"There is no function associated to the '{arguments.command}' command")

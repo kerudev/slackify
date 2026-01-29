@@ -1,3 +1,4 @@
+import json
 import os
 import subprocess
 import time
@@ -8,7 +9,7 @@ from slackfm import log
 from slackfm.api import spotify
 from slackfm.constants import (
     ENV_FILE,
-    PREV_PICTURE_FILE,
+    PREVIOUS_FILE,
     SERVICE_PATH,
     TOKEN_KEYS,
 )
@@ -90,14 +91,13 @@ def play(arguments: Namespace):  # noqa: C901  # TODO refactor
         arguments.progress = flags.get("progress", False)
         arguments.cover = flags.get("cover", False)
 
-    previous_photo: str = slack.get_profile()["image_512"]
+    profile = slack.get_profile()
 
     # TODO first request returns None for browser
-    with open(PREV_PICTURE_FILE, "w") as f:
-        f.write(previous_photo)
+    with open(PREVIOUS_FILE, "w") as f:
+        json.dump(profile, f)
 
-    # Don't modify previous_photo from this point, as it's used in the except block
-    previous_cover_url = previous_photo
+    previous_image_url = profile["image_512"]
 
     while True:
         try:
@@ -128,10 +128,10 @@ def play(arguments: Namespace):  # noqa: C901  # TODO refactor
 
             cover_url = song["item"]["album"]["images"][0]["url"]
 
-            if previous_cover_url == cover_url:
+            if previous_image_url == cover_url:
                 continue
 
-            previous_cover_url = cover_url
+            previous_image_url = cover_url
             slack.set_photo(cover_url)
 
         except RuntimeError as e:
@@ -147,7 +147,7 @@ def play(arguments: Namespace):  # noqa: C901  # TODO refactor
 
         except KeyboardInterrupt:
             log.warn("Stopping execution")
-            slack.reset_profile(previous_photo)
+            slack.reset_profile()
 
             exit(0)
 

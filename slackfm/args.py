@@ -77,9 +77,6 @@ def parse() -> argparse.Namespace:
 def main():
     arguments = parse()
 
-    if os.getuid() != 0:
-        log.warn("You may be asked to authenticate as sudo.")
-
     if arguments.browser:
         os.environ["SLACKFM_BROWSER"] = "1"
 
@@ -94,5 +91,8 @@ def main():
     if func.__name__ == "play":
         func(arguments)
         exit(0)
+
+    if os.getuid() != 0:
+        log.warn("You may be asked to authenticate as sudo.")
 
     func()

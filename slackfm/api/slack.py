@@ -1,9 +1,10 @@
+import json
 import urllib.request
 import uuid
 from typing import Any
 
 from slackfm import log
-from slackfm.constants import PREV_PICTURE_FILE
+from slackfm.constants import PREVIOUS_FILE
 from slackfm.utils import dispatch, get_token
 
 SLACK_TOKEN = get_token("SLACK_TOKEN")
@@ -61,7 +62,14 @@ def get_presence() -> str:
 
 def get_profile() -> dict[str, Any]:
     response = _get("users.profile.get")
-    return response["profile"]
+    profile = response["profile"]
+
+    return {
+        "status_text": profile["status_text"],
+        "status_emoji": profile["status_emoji"],
+        "status_expiration": 0,
+        "image_512": profile["image_512"],
+    }
 
 
 def set_profile(args: dict[str, str]) -> str:
@@ -71,27 +79,21 @@ def set_profile(args: dict[str, str]) -> str:
     )
 
 
-def reset_profile(image_url: str) -> str:
-    args = {
-        "status_text": "",
-        "status_emoji": "",
-        "status_expiration": 0,
-    }
+def reset_profile() -> None:
+    if not PREVIOUS_FILE.exists():
+        log.warn("The previous profile file can't be found")
+        exit(1)
+
+    with open(PREVIOUS_FILE, "r") as f:
+        previous = json.load(f)
+
+    profile_picture = previous.pop("image_512")
 
     log.info("Resetting the profile info")
-    set_profile(args)
-
-    if not image_url:
-        if not PREV_PICTURE_FILE.exists():
-            log.warn("The previous profile picture can't be found")
-            exit(1)
-
-        # TODO save as a json with the picture URL and the previous status
-        with open(PREV_PICTURE_FILE, "r") as f:
-            image_url = f.readline()
+    set_profile(previous)
 
     log.info("Resetting the profile picture")
-    set_photo(image_url)
+    set_photo(profile_picture)
 
 
 def set_photo(image_url: str) -> str:

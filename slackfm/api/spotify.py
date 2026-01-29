@@ -38,37 +38,6 @@ PORT = 8888
 REDIRECT_URI = f"http://127.0.0.1:{PORT}/callback"
 
 
-def __calc_time(millis: int) -> str:
-    total_secs = millis // 1000
-
-    mins = total_secs // 60
-    secs = total_secs % 60
-
-    return f"{mins}:{secs:02d}"
-
-
-def _get(url: str, headers: dict[str, Any]) -> str:
-    req = urllib.request.Request(
-        url=url,
-        headers=headers,
-        method="GET",
-    )
-
-    return dispatch(req)
-
-
-def _post(url: str, json: dict[str, Any], headers: dict[str, Any]) -> str:
-    data = urllib.parse.urlencode(json).encode()
-
-    req = urllib.request.Request(
-        url=url,
-        data=data,
-        headers=headers,
-    )
-
-    return dispatch(req)
-
-
 class ReusableTCPServer(socketserver.TCPServer):
     allow_reuse_address = True
 
@@ -94,16 +63,77 @@ class SpotifyTokenHandler(http.server.BaseHTTPRequestHandler):
             "redirect_uri": REDIRECT_URI,
         }
 
-        response = _post(
-            url=SPOTIFY_TOKEN_ENDPOINT,
-            json=data,
-            headers=SPOTIFY_TOKEN_HEADERS,
-        )
+        response = _post(SPOTIFY_TOKEN_ENDPOINT, SPOTIFY_TOKEN_HEADERS, data=data)
 
         self.server.token_response = response
 
 
+def __calc_time(millis: int) -> str:
+    total_secs = millis // 1000
+
+    mins = total_secs // 60
+    secs = total_secs % 60
+
+    return f"{mins}:{secs:02d}"
+
+
+def _get(url: str, headers: dict[str, Any]) -> str | dict[str, str]:
+    """
+    Make a `GET` request.
+
+    Parameters
+    ----------
+    url: str
+        The URL which will be requested.
+    headers: dict[str, Any]
+        The request's headers.
+
+    Returns
+    -------
+    str | dict[str, str]
+        The response.
+    """
+    req = urllib.request.Request(url=url, headers=headers)
+
+    return dispatch(req)
+
+
+def _post(url: str, headers: dict[str, Any], *, data: dict[str, Any]) -> str:
+    """
+    Make a `POST` request.
+
+    Parameters
+    ----------
+    url: str
+        The URL which will be requested.
+    headers: dict[str, Any]
+        The request's headers.
+    data: dict[str, Any] | bytes
+        The request's body.
+
+    Returns
+    -------
+    str
+        The response.
+    """
+    data = urllib.parse.urlencode(data).encode()
+
+    req = urllib.request.Request(url=url, headers=headers, data=data)
+
+    return dispatch(req)
+
+
 def read_token() -> dict[str, str]:
+    """
+    Read the token from `SPOTIFY_TOKEN_FILE`.
+
+    If `SPOTIFY_TOKEN_FILE` doesn't exist, a new token is requested.
+
+    Returns
+    -------
+    dict[str, str]
+        The token data.
+    """
     if SPOTIFY_TOKEN_FILE.exists():
         with open(SPOTIFY_TOKEN_FILE, "r") as f:
             return json.load(f)
@@ -117,6 +147,14 @@ def read_token() -> dict[str, str]:
 
 
 def request_token() -> dict[str, str]:
+    """
+    Request a new token.
+
+    Returns
+    -------
+    dict[str, str]
+        The token data.
+    """
     chars = string.ascii_uppercase + string.digits
     state = "".join(random.choice(chars) for _ in range(16))
 
@@ -138,6 +176,14 @@ def request_token() -> dict[str, str]:
 
 
 def refresh_token() -> dict[str, str]:
+    """
+    Refresh the existing token.
+
+    Returns
+    -------
+    dict[str, str]
+        The token data.
+    """
     with open(SPOTIFY_TOKEN_FILE, "r") as f:
         refresh_token = json.load(f).get("refresh_token")
 
@@ -156,11 +202,7 @@ def refresh_token() -> dict[str, str]:
         "client_id": SPOTIFY_CLIENT_ID,
     }
 
-    token = _post(
-        url=SPOTIFY_TOKEN_ENDPOINT,
-        json=data,
-        headers=SPOTIFY_TOKEN_HEADERS,
-    )
+    token = _post(SPOTIFY_TOKEN_ENDPOINT, SPOTIFY_TOKEN_HEADERS, data=data)
 
     with open(SPOTIFY_TOKEN_FILE, "w") as f:
         json.dump(token, f)
@@ -168,12 +210,20 @@ def refresh_token() -> dict[str, str]:
     return token
 
 
-def get_song() -> str:
+def get_song() -> dict[str, str]:
+    """
+    Request the current song.
+
+    Returns
+    -------
+    dict[str, str]
+        The response.
+    """
     token = read_token()
 
     response = _get(
-        url="https://api.spotify.com/v1/me/player/currently-playing",
-        headers={"Authorization": f"Bearer {token['access_token']}"},
+        "https://api.spotify.com/v1/me/player/currently-playing",
+        {"Authorization": f"Bearer {token['access_token']}"},
     )
 
     if not response:
@@ -191,6 +241,21 @@ def get_song() -> str:
 
 
 def format_song(response: dict[str, str], flags: Namespace) -> str:
+    """
+    Request the current song.
+
+    Parameters
+    ----------
+    response: dict[str, str]
+        The response from `get_song`.
+    flags: Namespace
+        The passed flags.
+
+    Returns
+    -------
+    str
+        The formatted song.
+    """
     if (song := response["item"]) is None:
         no_song_msg = (
             "Maybe you are playing a podcast episode?"

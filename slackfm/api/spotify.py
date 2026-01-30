@@ -240,9 +240,9 @@ def get_song() -> dict[str, str]:
     return response
 
 
-def format_song(response: dict[str, str], flags: Namespace) -> str:
+def format_song_to_status(response: dict[str, str], flags: Namespace) -> str:
     """
-    Request the current song.
+    Format the song response into a valid Slack status.
 
     Parameters
     ----------
@@ -254,7 +254,7 @@ def format_song(response: dict[str, str], flags: Namespace) -> str:
     Returns
     -------
     str
-        The formatted song.
+        The formatted status.
     """
     if (song := response["item"]) is None:
         no_song_msg = (
@@ -268,10 +268,10 @@ def format_song(response: dict[str, str], flags: Namespace) -> str:
     artist = song["artists"][0]["name"]
     name = song["name"]
 
-    title = [f"{artist} - {name}"]
+    parts = {"song": f"{artist} - {name}"}
 
     if flags.album and song["album"]["album_type"] != "single":
-        title.append(f"({song['album']['name']})")
+        parts["album"] = f"({song['album']['name']})"
 
     if flags.progress:
         progress_ms = response["progress_ms"]
@@ -280,6 +280,51 @@ def format_song(response: dict[str, str], flags: Namespace) -> str:
         progress = __calc_time(progress_ms)
         total = __calc_time(total_ms)
 
-        title.append(f"({progress} / {total})")
+        parts["progress"] = f"({progress} / {total})"
 
-    return " ".join(title)
+    return _resolve_status_length(parts)
+
+
+def _resolve_status_length(parts: dict[str, str]) -> str:
+    """
+    Transform the parts of a song to a status string.
+
+    Also taking into account Slack's 100 character cap.
+
+    Parameters
+    ----------
+    parts: dict[str, str]
+        The parts of the status. The `song` key is always present, but the
+        `album` and the `progress` keys are optional.
+
+    Returns
+    -------
+    str
+        The formatted status.
+    """
+    status = " ".join(parts.values())
+
+    # Slack status has a 100 character cap
+    if len(status) <= 100:
+        return status
+
+    available = 100
+    available -= len(parts) - 1  # subtract the whitespaces added by "join"
+
+    if "progress" in parts:
+        available -= len(parts["progress"])
+
+    if "album" not in parts:
+        parts["song"] = parts["song"][: available - 3] + "..."
+
+        return " ".join(parts.values())
+
+    if len(parts["song"]) < available:
+        available -= len(parts["song"])
+        parts["album"] = parts["album"][: available - 4] + "...)"
+
+    else:
+        available -= len(parts["album"])
+        parts["song"] = parts["song"][: available - 3] + "..."
+
+    return " ".join(parts.values())

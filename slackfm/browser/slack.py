@@ -1,5 +1,11 @@
 try:
-    from playwright.sync_api import Page, Playwright, sync_playwright
+    from playwright.sync_api import (
+        Browser,
+        BrowserContext,
+        Page,
+        Playwright,
+        sync_playwright,
+    )
 except ImportError as e:
     raise RuntimeError(
         "To use the --browser flag, please install the browser dependencies:\n"
@@ -8,14 +14,33 @@ except ImportError as e:
         "You may be asked to install additional dependencies for Playwright.\n"
     ) from e
 
+import urllib.request
+from typing import Any, TypedDict
+
 from slackfm import log
-from slackfm.api.slack import _get
 from slackfm.constants import CONFIG_PATH
 from slackfm.log import info
+from slackfm.utils import dispatch, read_previous
 
 STORAGE = CONFIG_PATH / "storage.json"
 
-_cache = {}
+
+class PlaywrightCache(TypedDict):
+    playwright: Playwright
+    browser: Browser
+    context: BrowserContext
+    page: Page
+
+
+_cache: PlaywrightCache = {}
+
+
+def _read_selectors():
+    ...
+
+
+def _cleanup_status():
+    ...
 
 
 def _start_page():
@@ -39,6 +64,7 @@ def _start_page():
 
 
 def _stop_page():
+    _cache["page"].close()
     _cache["context"].close()
     _cache["browser"].close()
     _cache["playwright"].stop()
@@ -95,54 +121,107 @@ def _open_edit_status(page: Page):
     page.click('[data-qa="member_profile_status_btn"]')
 
 
+def _clear_status(page: Page):
+    locator = page.locator(".p-ia_member_profile__status__clear")
+
+    if locator.count() > 0:
+        locator.click()
+
+
 def get_presence():
     page = _get_page()
-    _open_edit_profile(page)
 
     locator = page.locator(".c-presence.is-inline")
-    classes = locator.evaluate("el => Array.from(el.classList)")
+    locator.wait_for(state="attached")
+    page.wait_for_timeout(200)  # wait to status to load
 
-    if "c-presence--away" in classes:
-        return "away"
+    classes = locator.evaluate("el => Array.from(el.classList)")
 
     if "c-presence--active" in classes:
         return "active"
 
-    return "unknown"
+    return "away"
 
 
 def set_photo(cover_url):
-    response: bytes = _get(cover_url, parse_url=False)
-
     page = _get_page()
     _open_edit_profile(page)
 
     with page.expect_file_chooser() as fc_info:
         page.click('[data-qa="edit-profile-upload-button"]')
 
+    req = urllib.request.Request(cover_url)
+    response: bytes = dispatch(req)
+
     file_chooser = fc_info.value
     file_chooser.set_files(
         [{"name": "cover.jpg", "mimeType": "image/jpeg", "buffer": response}]
     )
 
+    # TODO move .ord-nw and .ord-se so the image isn't cropped
+
     page.click('[data-qa="edit_profile_upload_save_button"]')
 
+    page.click('[aria-label="Save Changes"]')
 
-def get_profile():
+
+def get_profile() -> dict[str, Any]:
     page = _get_page()
-    _open_edit_profile(page)
 
-    locator = page.locator(".p-edit_profile__photo")
-    image = locator.evaluate("el => el.src")
+    locator_image = page.locator(".p-r_member_profile__avatar__img")
+    image_512 = locator_image.evaluate("el => el.src")
 
-    return {"image_512": image}
+    locator_status = page.locator(".p-ia_member_profile__status__wrapper")
+    status_text = locator_status.evaluate("el => el.textContent")
+
+    status_emoji = ""
+
+    if status_text:
+        locator_emoji = page.locator(".c-custom_status__emoji_in_member_profile > img")
+        status_emoji = locator_emoji.evaluate("el => el.dataset.stringifyEmoji")
+
+    _clear_status(page)
+
+    return {
+        "status_expiration": 0,  # can't get this in the frontend
+        "status_text": status_text,
+        "status_emoji": status_emoji,
+        "image_512": image_512,
+    }
 
 
 def set_profile(args):
-    pass
+    page = _get_page()
+    _open_edit_status(page)
+
+    button = page.locator('[data-qa="member_profile_status_btn"]')
+    text = button.evaluate("el => el.textContent")
+
+    log.info("Setting the song as the state")
+
+    if text == "Set a status":
+        emoji = args["status_emoji"].replace(":", "")
+
+        page.click('[data-qa="custom_status_input_emoji_picker"]')
+        page.fill('[data-qa="emoji_picker_input"]', emoji)
+        page.click(f"#emoji-picker-{emoji}")
+
+    menu = page.locator(".p-custom_status_modal")
+
+    menu.locator(".ql-editor > p").fill(args["status_text"])
+    menu.locator('[data-qa="custom_status_input_go"]').click()
 
 
-def reset_profile(previous_photo):
+def reset_profile():
+    previous = read_previous()
+    profile_picture = previous.pop("image_512")
+
+    log.info("Resetting the profile info")
+    set_profile(previous)
+
+    log.info("Resetting the profile picture")
+    set_photo(profile_picture)
+
+    # TODO cleanup states created in runtime
+
     _stop_page()
-
-    return {}

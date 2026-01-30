@@ -1,11 +1,9 @@
-import json
 import urllib.request
 import uuid
 from typing import Any
 
 from slackfm import log
-from slackfm.constants import PREVIOUS_FILE
-from slackfm.utils import dispatch, get_token
+from slackfm.utils import dispatch, get_token, read_previous
 
 SLACK_TOKEN = get_token("SLACK_TOKEN")
 
@@ -115,9 +113,9 @@ def get_profile() -> dict[str, Any]:
     profile = response["profile"]
 
     return {
+        "status_expiration": profile["status_expiration"],
         "status_text": profile["status_text"],
         "status_emoji": profile["status_emoji"],
-        "status_expiration": 0,
         "image_512": profile["image_512"],
     }
 
@@ -144,13 +142,7 @@ def reset_profile() -> None:
     The `PREVIOUS_FILE` is expected to exist. If it doesn't, the program will
     exit with an error code.
     """
-    if not PREVIOUS_FILE.exists():
-        log.warn("The previous profile file can't be found")
-        exit(1)
-
-    with open(PREVIOUS_FILE, "r") as f:
-        previous = json.load(f)
-
+    previous = read_previous()
     profile_picture = previous.pop("image_512")
 
     log.info("Resetting the profile info")

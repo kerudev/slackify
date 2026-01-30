@@ -10,7 +10,13 @@ from pathlib import Path
 from typing import Any
 
 from slackfm import log
-from slackfm.constants import CONF_FILE, ENV_FILE, SERVICE_PATH, TMP_SERVICE_PATH
+from slackfm.constants import (
+    CONF_FILE,
+    ENV_FILE,
+    PREVIOUS_FILE,
+    SERVICE_PATH,
+    TMP_SERVICE_PATH,
+)
 
 
 def file_to_dict(path: Path) -> dict[str, str]:
@@ -48,6 +54,26 @@ def read_tokens() -> dict[str, str]:
         The file parsed content.
     """
     return {pair[0].upper(): pair[1] for pair in file_to_dict(ENV_FILE).items()}
+
+
+def read_previous() -> dict[str, Any]:
+    """
+    Read the contents of `PREVIOUS_FILE`.
+
+    The `PREVIOUS_FILE` is expected to exist. If it doesn't, the program will
+    exit with an error code.
+
+    Returns
+    -------
+    dict[str, Any]
+        Contents of the file.
+    """
+    if not PREVIOUS_FILE.exists():
+        log.warn("The previous profile file can't be found")
+        exit(1)
+
+    with open(PREVIOUS_FILE, "r") as f:
+        return json.load(f)
 
 
 def get_flags() -> dict[str, str]:

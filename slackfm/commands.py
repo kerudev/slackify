@@ -21,6 +21,9 @@ else:
     from slackfm.api import slack
 
 
+# TODO add reset command to reset profile manually
+
+
 def __check_service_exists():
     if not SERVICE_PATH.exists():
         log.warn(f"The SlackFM service doesn't exist at '{SERVICE_PATH}'")
@@ -91,9 +94,10 @@ def play(arguments: Namespace):  # noqa: C901  # TODO refactor
         arguments.progress = flags.get("progress", False)
         arguments.cover = flags.get("cover", False)
 
+    log.info("Saving the previous profile state")
+
     profile = slack.get_profile()
 
-    # TODO first request returns None for browser
     with open(PREVIOUS_FILE, "w") as f:
         json.dump(profile, f)
 
@@ -108,14 +112,14 @@ def play(arguments: Namespace):  # noqa: C901  # TODO refactor
             if not (song := spotify.get_song()):
                 return
 
-            if not (title := spotify.format_song(song, arguments)):
+            if not (status := spotify.format_song_to_status(song, arguments)):
                 stop()
                 return
 
-            log.info(title)
+            log.info(status)
 
             args = {
-                "status_text": title,
+                "status_text": status,
                 "status_emoji": ":musical_note:",
                 "status_expiration": 0,
             }
@@ -146,6 +150,8 @@ def play(arguments: Namespace):  # noqa: C901  # TODO refactor
             time.sleep(5)
 
         except KeyboardInterrupt:
+            # TODO read ESC press instead of Ctrl + C so playwright doesn't close browser
+
             log.warn("Stopping execution")
             slack.reset_profile()
 
